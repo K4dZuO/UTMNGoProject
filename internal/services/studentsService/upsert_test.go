@@ -42,7 +42,7 @@ func (s *StudentServiceSuite) TestUpsertSuccess() {
 
 }
 
-func (s *StudentServiceSuite) TestUpsertError() {
+func (s *StudentServiceSuite) TestUpsertStorageError() {
 	studentsInfos := []*models.StudentInfo{
 		{
 			ID:    1,
@@ -61,7 +61,7 @@ func (s *StudentServiceSuite) TestUpsertError() {
 
 }
 
-func (s *StudentServiceSuite) TestUpsertNameError() {
+func (s *StudentServiceSuite) TestUpsertEmptyNameError() {
 	studentsInfos := []*models.StudentInfo{
 		{
 			ID:    1,

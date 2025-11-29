@@ -15,4 +15,8 @@ kafka:
 StudentServiceSettings:
   minNameLen: 1
   maxNameLen: 50
+
+GroupServiceSettings:
+  httpAddr: ""
+  maxNameLen: ""
   

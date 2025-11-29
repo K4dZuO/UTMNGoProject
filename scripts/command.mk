@@ -10,3 +10,10 @@ up:
 down:
 	podman-compose down
 
+.PHONY: cov
+cov:
+	go test -cover ./... 
+
+.PHONY: mock
+mock:
+	mockery
