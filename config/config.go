@@ -1,50 +1,33 @@
 package config
 
-import (
-	"fmt"
-	"os"
 
-	"go.yaml.in/yaml/v4"
+import (
+"os"
+"gopkg.in/yaml.v3"
 )
 
+type PostgresConfig struct {
+    DSN string `yaml:"dsn"`
+}
+
+
+
 type Config struct {
-	Database               DatabaseConfig         `yaml:"database"`
-	Kafka                  KafkaConfig            `yaml:"kafka"`
-	StudentServiceSettings StudentServiceSettings `yaml:"StudentServiceSettings"`
+	Postgres PostgresConfig `yaml:"postgres"`
+	Migrations struct {
+		Path string `yaml:"path"`
+	} `yaml:"migrations"`
 }
 
-type DatabaseConfig struct {
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
-	DBName   string `yaml:"name"`
-	SSLMode  string `yaml:"ssl_mode"`
-}
 
-type KafkaConfig struct {
-	Host                       string `yaml:"host"`
-	Port                       int    `yaml:"port"`
-	StudentInfoUpsertTopicName string `yaml:"student_info_upsert_topic_name"`
-	StudentInfoEventTopicName  string `yaml:"student_info_event_topic_name"`
-}
-
-type StudentServiceSettings struct {
-	MinNameLen int `yaml:"minNameLen"`
-	MaxNameLen int `yaml:"maxNameLen"`
-}
-
-func LoadConfig(filename string) (*Config, error) {
-	data, err := os.ReadFile(filename)
+func Load(path string) (*Config, error) {
+	b, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+		return nil, err
 	}
-
-	var config Config
-	err = yaml.Unmarshal(data, &config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal YAML: %w", err)
+	var cfg Config
+	if err := yaml.Unmarshal(b, &cfg); err != nil {
+		return nil, err
 	}
-
-	return &config, nil
+	return &cfg, nil
 }
