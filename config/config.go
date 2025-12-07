@@ -10,8 +10,6 @@ type PostgresConfig struct {
     DSN string `yaml:"dsn"`
 }
 
-
-
 type Config struct {
 	Postgres PostgresConfig `yaml:"postgres"`
 	Migrations struct {

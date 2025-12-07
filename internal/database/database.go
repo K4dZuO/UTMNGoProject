@@ -1,20 +1,24 @@
 package database
 
 import (
-    "context"
-    "fmt"
-    "github.com/jackc/pgx/v5/pgxpool"
+	"context"
+	"fmt"
+	"go_back/config"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func NewPostgresPool() (*pgxpool.Pool, error) {
-    dsn := "postgres://root:root@localhost:5432/marketdb"
+    appCfg, err := config.Load("config.yaml")
+    if err != nil {
+        return nil, fmt.Errorf("cannot parse yaml: %w", err)
+    }
 
-    cfg, err := pgxpool.ParseConfig(dsn)
+    pgcfg, err := pgxpool.ParseConfig(appCfg.Postgres.DSN)
     if err != nil {
         return nil, fmt.Errorf("cannot parse config: %w", err)
     }
 
-    pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
+    pool, err := pgxpool.NewWithConfig(context.Background(), pgcfg)
     if err != nil {
         return nil, fmt.Errorf("cannot create pool: %w", err)
     }

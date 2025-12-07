@@ -2,11 +2,16 @@ package models
 
 import "time"
 
+type Category struct {
+    ID      int     `json:"id" db:"id"`
+    Name    string  `json:"name" db:"name"`
+}
+
 type Product struct {
     ID       int     `json:"id" db:"id"`
     Name     string  `json:"name" db:"name"`
     Rate     float64 `json:"rate" db:"rate"`
-    Category string  `json:"category" db:"category"`
+    CategoryID int  `json:"category_id" db:"category_id"`
 }
 
 type Review struct {
