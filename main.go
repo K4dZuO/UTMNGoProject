@@ -7,6 +7,7 @@ import (
     "go_back/config"
     "go_back/internal/database"
     "go_back/internal/seeder"
+    "go_back/internal/kafka"
 )
 
 func main() {
@@ -40,4 +41,21 @@ func main() {
     if err := seeder.SeedCategories(ctx, conn.Conn()); err != nil {
         log.Fatal(err)
     }
+
+    if err := seeder.SeedProducts(ctx, pool); err != nil {
+        log.Fatal(err)
+    }
+
+
+    producer, err := kafka.NewSyncProducer([]string{"localhost:9092"})
+    if err != nil {
+        log.Fatal("producer init error:", err)
+    }
+    defer producer.Close()
+
+    err = kafka.SendMessage(producer, "recalculation-requests", "hello from Go!")
+    if err != nil {
+        log.Fatal("send error:", err)
+    }
+    
 }

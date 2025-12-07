@@ -13,5 +13,32 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  kafka:
+    image: apache/kafka:latest
+    container_name: go_kafka
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      # === Основное ===
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@go_kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+
+      # === Cluster ID — UUID без "-" ===
+      KAFKA_CLUSTER_ID: 4YjUOeEaQzq1r5t6v7w8x9
+      
+      # === Простые настройки ===
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+    volumes:
+      - kafka_data:/var/lib/kafka
+  
 volumes:
   pgdata:
+  kafka_data:

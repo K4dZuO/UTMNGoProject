@@ -18,6 +18,7 @@ func NewPostgresPool() (*pgxpool.Pool, error) {
         return nil, fmt.Errorf("cannot parse config: %w", err)
     }
 
+    pgcfg.MaxConns = 50
     pool, err := pgxpool.NewWithConfig(context.Background(), pgcfg)
     if err != nil {
         return nil, fmt.Errorf("cannot create pool: %w", err)
