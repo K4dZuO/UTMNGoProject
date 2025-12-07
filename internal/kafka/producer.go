@@ -1,30 +1,48 @@
 package kafka
 
 import (
-    "log"
-    "github.com/IBM/sarama"
+	"encoding/json"
+
+	"github.com/IBM/sarama"
 )
 
-func NewSyncProducer(brokers []string) (sarama.SyncProducer, error) {
+func NewSyncProducer(brokers []string) (Producer, error) {
     cfg := sarama.NewConfig()
     cfg.Producer.Return.Successes = true
-    cfg.Producer.RequiredAcks = sarama.WaitForAll
-    cfg.Producer.Retry.Max = 5
 
-    return sarama.NewSyncProducer(brokers, cfg)
+    p, err := sarama.NewSyncProducer(brokers, cfg)
+    if err != nil {
+        return nil, err
+    }
+
+    return &SyncProducer{p: p}, nil
 }
 
-func SendMessage(producer sarama.SyncProducer, topic, message string) error {
+type Producer interface {
+    Send(topic string, event interface{}) error
+    Close() error
+}
+
+func (s *SyncProducer) Close() error {
+    return s.p.Close()
+}
+
+
+type SyncProducer struct {
+    p sarama.SyncProducer
+}
+
+func (s *SyncProducer) Send(topic string, event interface{}) error {
+    data, _ := json.Marshal(event)
     msg := &sarama.ProducerMessage{
         Topic: topic,
-        Value: sarama.StringEncoder(message),
+        Value: sarama.StringEncoder(data),
     }
+    _, _, err := s.p.SendMessage(msg)
+    return err
+}
 
-    partition, offset, err := producer.SendMessage(msg)
-    if err != nil {
-        return err
-    }
-
-    log.Printf("Message sent => partition %d, offset %d\n", partition, offset)
-    return nil
+type RecalculationEvent struct {
+    ProductID int `json:"product_id"`
+    ReviewID  string `json:"review_id"`
 }

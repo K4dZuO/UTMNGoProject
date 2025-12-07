@@ -8,6 +8,10 @@ import (
     "go_back/internal/database"
     "go_back/internal/seeder"
     "go_back/internal/kafka"
+    "go_back/internal/reviews"
+    "github.com/gin-gonic/gin"
+    ginSwagger "github.com/swaggo/gin-swagger"
+    swaggerFiles "github.com/swaggo/files"
 )
 
 func main() {
@@ -53,9 +57,15 @@ func main() {
     }
     defer producer.Close()
 
-    err = kafka.SendMessage(producer, "recalculation-requests", "hello from Go!")
-    if err != nil {
-        log.Fatal("send error:", err)
-    }
+    repo := reviews.NewPgRepository(pool)
+    svc := reviews.NewService(repo, producer)
+    handler := reviews.NewHandler(svc)
+
+    r := gin.Default()
+
+    r.POST("/reviews", handler.CreateReview)
+    r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+    r.Run(":8081")
     
 }
