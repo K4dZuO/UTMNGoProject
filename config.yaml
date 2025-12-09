@@ -1,7 +1,0 @@
-postgres:
-  dsn: "postgres://root:root@localhost:5432/marketdb?sslmode=disable"
-
-
-# Optional settings
-migrations:
-  path: "migrations"

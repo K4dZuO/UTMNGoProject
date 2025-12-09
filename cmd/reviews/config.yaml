@@ -1,0 +1,7 @@
+postgres:
+  dsn: "postgres://root:root@postgres:5432/marketdb"
+
+
+# Optional settings
+migrations:
+  path: "migrations"

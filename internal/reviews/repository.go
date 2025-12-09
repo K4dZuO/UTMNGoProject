@@ -19,7 +19,6 @@ func NewPgRepository(db *pgxpool.Pool) *PgRepository {
 }
 
 func (r *PgRepository) InsertReview(ctx context.Context, req CreateReviewRequest) (string, error) {
-    // генерируем UUID 1 раз
     id := uuid.New().String()
 
     query := `

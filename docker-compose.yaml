@@ -2,16 +2,49 @@ version: "3.9"
 
 services:
   postgres:
-    image: postgres:16
-    container_name: go_market_pg
+    image: postgres:16-alpine
     environment:
+      POSTGRES_DB: marketdb
       POSTGRES_USER: root
       POSTGRES_PASSWORD: root
-      POSTGRES_DB: marketdb
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  reviews:
+    build:
+      context: .
+      dockerfile: cmd/reviews/Dockerfile
+    environment:
+      DATABASE_DSN: postgres://root:root@postgres:5432/marketdb
+      # CONFIG_PATH: /app/config.yaml
+    depends_on:
+      - postgres
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+
+  rating:
+    build:
+      context: .
+      dockerfile: cmd/rating/Dockerfile
+    environment:
+      DATABASE_DSN: postgres://root:root@postgres:5432/marketdb
+      REDIS_ADDR: redis:6379
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "8082:8082"
+    restart: unless-stopped
 
   kafka:
     image: apache/kafka:latest
@@ -25,7 +58,7 @@ services:
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@go_kafka:9093
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
 
       # === Cluster ID — UUID без "-" ===
@@ -35,10 +68,9 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-
     volumes:
       - kafka_data:/var/lib/kafka
   
 volumes:
-  pgdata:
+  postgres_data:
   kafka_data:

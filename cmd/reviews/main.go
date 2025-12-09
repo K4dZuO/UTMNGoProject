@@ -4,7 +4,7 @@ import (
     "fmt"
     "context"
     "log"
-    "go_back/config"
+    // "go_back/config"
     "go_back/internal/database"
     "go_back/internal/seeder"
     "go_back/internal/kafka"
@@ -15,12 +15,14 @@ import (
 )
 
 func main() {
-    appCfg, err := config.Load("config.yaml")
+    // path := "config.yaml"
+
+    // appCfg, err := config.Load(path)
     ctx := context.Background()
 
-    if err != nil {
-        log.Fatalf("config load error: %v", err)
-    }
+    // if err != nil {
+        // log.Fatalf("config load error: %v", err)
+    // }
 
     pool, err := database.NewPostgresPool()
     if err != nil {
@@ -31,7 +33,8 @@ func main() {
     fmt.Println("PostgreSQL connected!")
 
     // запускаем миграции
-    if err := database.RunMigrations(appCfg.Postgres.DSN, appCfg.Migrations.Path); err != nil {
+    // if err := database.RunMigrations(appCfg.Postgres.DSN, appCfg.Migrations.Path); err != nil {
+    if err := database.RunMigrations("postgres://root:root@postgres:5432/marketdb", "migrations"); err != nil {
     log.Fatal(err)
     }
 
@@ -51,7 +54,7 @@ func main() {
     }
 
 
-    producer, err := kafka.NewSyncProducer([]string{"localhost:9092"})
+    producer, err := kafka.NewSyncProducer([]string{"kafka:9092"})
     if err != nil {
         log.Fatal("producer init error:", err)
     }
@@ -67,5 +70,4 @@ func main() {
     r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
     r.Run(":8081")
-    
 }

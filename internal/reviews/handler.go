@@ -13,16 +13,6 @@ func NewHandler(svc *Service) *Handler {
     return &Handler{svc: svc}
 }
 
-// @Summary Create review
-// @Description Create new review and trigger rating recalculation
-// @Tags reviews
-// @Accept json
-// @Produce json
-// @Param review body CreateReviewRequest true "Review data"
-// @Success 201 {object} CreateReviewResponse
-// @Failure 400 {string} string
-// @Failure 500 {string} string
-// @Router /reviews [post]
 func (h *Handler) CreateReview(c *gin.Context) {
     var req CreateReviewRequest
     if err := c.ShouldBindJSON(&req); err != nil {
