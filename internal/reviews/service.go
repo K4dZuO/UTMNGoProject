@@ -2,15 +2,14 @@ package reviews
 
 import (
     "context"
-    "go_back/internal/kafka"
 )
 
 type Service struct {
     repo       Repository
-    producer   kafka.Producer
+    producer   Producer
 }
 
-func NewService(repo Repository, producer kafka.Producer) *Service {
+func NewService(repo Repository, producer Producer) *Service {
     return &Service{repo: repo, producer: producer}
 }
 
@@ -20,7 +19,7 @@ func (s *Service) CreateReview(ctx context.Context, req CreateReviewRequest) (st
         return "", err
     }
 
-    event := kafka.RecalculationEvent{
+    event := RecalculationEvent{
         ProductID: req.ProductID,
         ReviewID:  id,
     }

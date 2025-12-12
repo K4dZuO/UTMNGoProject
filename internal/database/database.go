@@ -3,17 +3,10 @@ package database
 import (
 	"context"
 	"fmt"
-	// "go_back/config"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func NewPostgresPool() (*pgxpool.Pool, error) {
-    // appCfg, err := config.Load("config.yaml")
-    // if err != nil {
-    //     return nil, fmt.Errorf("cannot parse yaml: %w", err)
-    // }
-
-    // pgcfg, err := pgxpool.ParseConfig(appCfg.Postgres.DSN)
     pgcfg, err := pgxpool.ParseConfig("postgres://root:root@postgres:5432/marketdb")    
     if err != nil {
         return nil, fmt.Errorf("cannot parse config: %w", err)

@@ -12,7 +12,7 @@ FROM alpine:3.20
 
 WORKDIR /app
 COPY --from=build /app/reviews .
-COPY cmd/reviews/config.yaml ./config.yaml
+COPY cmd/reviews/review_config.yaml ./review_config.yaml
 COPY --from=build /app/migrations ./migrations
 
 EXPOSE 8081
