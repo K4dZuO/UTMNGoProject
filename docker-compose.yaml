@@ -69,6 +69,18 @@ services:
       - "8083:8083"
     restart: unless-stopped
 
+  gateway:
+    build:
+      context: .
+      dockerfile: cmd/gateway/Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - reviews
+      - rating
+      - recommend
+    restart: unless-stopped
+
   kafka:
     image: apache/kafka:latest
     container_name: go_kafka

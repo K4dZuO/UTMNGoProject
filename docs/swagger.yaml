@@ -1,0 +1,82 @@
+basePath: /
+definitions:
+  main.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  main.ReviewRequest:
+    properties:
+      product_id:
+        type: integer
+      rate:
+        type: integer
+    type: object
+  main.ReviewResponse:
+    properties:
+      id:
+        type: string
+    type: object
+  main.TopResponse:
+    additionalProperties:
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        rate:
+          type: number
+      type: object
+    type: object
+info:
+  contact: {}
+  description: Entry point for all Market microservices
+  title: Market API Gateway
+  version: "1.0"
+paths:
+  /get_top_category:
+    get:
+      description: Forwards request to Recommend microservice
+      parameters:
+      - description: Category name
+        in: query
+        name: categoryName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.TopResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Get top-10 products by category
+  /reviews:
+    post:
+      consumes:
+      - application/json
+      description: Forwards review creation to Reviews microservice
+      parameters:
+      - description: Review data
+        in: body
+        name: review
+        required: true
+        schema:
+          $ref: '#/definitions/main.ReviewRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/main.ReviewResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ErrorResponse'
+      summary: Create a new review
+swagger: "2.0"
