@@ -26,8 +26,6 @@ func (r *PgRepository) InsertReview(ctx context.Context, req CreateReviewRequest
         VALUES ($1, $2, $3)
         RETURNING id;
     `
-
-    // Для RETURNING можно либо использовать ту же переменную, либо отдельную.
     var returnedID string
 
     err := r.db.QueryRow(ctx, query, id, req.ProductID, req.Rate).Scan(&returnedID)

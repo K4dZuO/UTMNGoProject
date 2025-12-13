@@ -26,8 +26,6 @@ func SeedProducts(ctx context.Context, pool *pgxpool.Pool) error {
 
 	batch := &pgx.Batch{}
 	
-	// Генерируем 1 млн продуктов (временно по 100к)
-	// for i := 1; i <= 1_000_000; i++ { 
 	for i := 1; i <= 100_000; i++ {
 		categoryId := 1 + rand.Intn(maxCategoryID)
 		name := fmt.Sprintf("Item #%d", i)

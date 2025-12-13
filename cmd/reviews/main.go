@@ -35,7 +35,7 @@ func main() {
     log.Fatal(err)
     }
 
-    /// Генерируем данные в таблицы
+    // Генерируем данные в таблицы
     conn, err := pool.Acquire(ctx)
     if err != nil {
         log.Fatal(err)
