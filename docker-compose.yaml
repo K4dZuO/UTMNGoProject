@@ -1,87 +1,116 @@
-version: '3.8'
+version: "3.9"
 
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 3
-    networks:
-    - students-net
-
   postgres:
-    image: postgres:15-alpine
-    container_name: postgres
-    restart: unless-stopped
+    image: postgres:16-alpine
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: students
+      POSTGRES_DB: marketdb
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin"]
-      interval: 5s
-      timeout: 3s
-      retries: 3
-    networks:
-    - students-net
+      test: ["CMD-SHELL", "pg_isready -U root -d marketdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  reviews:
+    build:
+      context: .
+      dockerfile: cmd/reviews/Dockerfile
+    environment:
+      DATABASE_DSN: postgres://root:root@postgres:5432/marketdb
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+
+  rating:
+    build:
+      context: .
+      dockerfile: cmd/rating/Dockerfile
+    environment:
+      DATABASE_DSN: postgres://root:root@postgres:5432/marketdb
+      REDIS_ADDR: redis:6379
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "8082:8082"
+    restart: unless-stopped
+
+  recommend:
+    build:
+      context: .
+      dockerfile: cmd/recommend/Dockerfile
+    environment:
+      REDIS_ADDR: redis:6379
+      RATING_SERVICE_URL: http://rating:8082
+    depends_on:
+      - redis
+      - rating
+      - kafka
+    ports:
+      - "8083:8083"
+    restart: unless-stopped
+
+  gateway:
+    build:
+      context: .
+      dockerfile: cmd/gateway/Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - reviews
+      - rating
+      - recommend
+    restart: unless-stopped
 
   kafka:
     image: apache/kafka:latest
-    container_name: kafka
-    environment:
-      - CLUSTER_ID=5L6g3nShT-eMCtK--X86sw  # Фиксированный кластер ID
-      - KAFKA_NODE_ID=1
-      - KAFKA_PROCESS_ROLES=broker,controller
-      - KAFKA_LISTENERS=PLAINTEXT_HOST://:9092,PLAINTEXT_DOCKER://:9094,CONTROLLER://:9093
-      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT_HOST://localhost:9092,PLAINTEXT_DOCKER://kafka:9094
-      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,PLAINTEXT_DOCKER:PLAINTEXT
-      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
-      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT_DOCKER
-      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
-      - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
-      - KAFKA_LOG_DIRS=/kafka/kraft-combined-logs
+    container_name: go_kafka
     ports:
       - "9092:9092"
-      - "9094:9094"
-    volumes:
-      - kafka_data:/kafka/kraft-combined-logs
-    networks:
-      - students-net
-
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: kafka-ui
-    depends_on:
-      - kafka
-    ports:
-      - "8081:8080"
+      - "9093:9093"
     environment:
-      - KAFKA_CLUSTERS_0_BOOTSTRAP_SERVERS=kafka:9094  # Используем внутренний порт
-      - KAFKA_CLUSTERS_0_NAME=kraft
-      - KAFKA_UI_AUTH_ENABLED=false
-    networks:
-      - students-net
+      # === Основное ===
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@go_kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
 
+      # === Cluster ID — UUID без "-" ===
+      KAFKA_CLUSTER_ID: 4YjUOeEaQzq1r5t6v7w8x9
+      
+      # === Простые настройки ===
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+    volumes:
+      - kafka_data:/var/lib/kafka
+    healthcheck:
+      test: ["CMD", "/opt/kafka/bin/kafka-topics.sh", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  
 volumes:
-  redis_data:
   postgres_data:
-  zookeeper_data:
   kafka_data:
-
-networks:
-  students-net:
-    name: students-net
-    driver: bridge

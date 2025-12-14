@@ -1,0 +1,10 @@
+server:
+  port: 8083
+
+redis:
+  addr: "redis:6379"
+  password: ""
+  db: 0
+
+rating_service:
+  url: "http://rating:8082"
