@@ -1,16 +1,23 @@
-package reviews
+package http
 
 import (
     "net/http"
+    "context"
     "github.com/gin-gonic/gin"
 )
 
+
 type Handler struct {
-    svc *Service
+	svc ReviewService
 }
 
-func NewHandler(svc *Service) *Handler {
-    return &Handler{svc: svc}
+type ReviewService interface {
+	CreateReview(ctx context.Context, productID int, rate int) (string, error)
+}
+
+
+func New(svc ReviewService) *Handler {
+	return &Handler{svc: svc}
 }
 
 func (h *Handler) CreateReview(c *gin.Context) {
@@ -20,12 +27,7 @@ func (h *Handler) CreateReview(c *gin.Context) {
         return
     }
 
-    if req.Rate < 1 || req.Rate > 5 {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "rating must be 1-5"})
-        return
-    }
-
-    id, err := h.svc.CreateReview(c, req)
+    id, err := h.svc.CreateReview(c.Request.Context(), req.ProductID, req.Rate)
     if err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
         return

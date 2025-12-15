@@ -4,7 +4,6 @@ import (
 	"context"
 	"reviews_service/internal/models"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -17,8 +16,6 @@ func New(db *pgxpool.Pool) *Storage {
 }
 
 func (s *Storage) Save(ctx context.Context, review models.ReviewInfo) error {
-    id := uuid.New()
-
     query := `
 		INSERT INTO reviews (id, product_id, rate)
 		VALUES ($1, $2, $3)
@@ -26,7 +23,7 @@ func (s *Storage) Save(ctx context.Context, review models.ReviewInfo) error {
     _, err := s.db.Exec(
 		ctx,
 		query,
-		id,
+		review.ID,
 		review.ProductID,
 		review.Rate,
 	)

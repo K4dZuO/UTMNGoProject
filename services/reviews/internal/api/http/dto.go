@@ -1,4 +1,4 @@
-package reviews
+package http
 
 
 type CreateReviewRequest struct {
