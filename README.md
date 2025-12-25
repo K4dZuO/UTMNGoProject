@@ -1,4 +1,4 @@
-# GolangReceiptService
+# GolangReviewService
 
 1. Запустить сборку контейнеров 
 ```
