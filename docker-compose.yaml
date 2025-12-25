@@ -98,6 +98,16 @@ services:
     ports:
       - "8082:8082"
 
+  recommend:
+    build:
+      context: ./services/recommend
+    depends_on:
+      redis:
+        condition: service_started
+      rating:
+        condition: service_started
+    ports:
+      - "8083:8083"
       
   akhq:
     image: tchiotludo/akhq:latest
