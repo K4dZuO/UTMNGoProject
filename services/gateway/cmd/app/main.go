@@ -8,8 +8,10 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
-	_ "go_back/docs" // swagger docs
+	_ "gateway_service/docs" // swagger docs
 )
+
+// Имитация бэка - прокси для пользователя
 
 // @title Market API Gateway
 // @version 1.0
@@ -63,7 +65,7 @@ func CreateReviewForward(c *gin.Context) {
 // @Failure 500 {object} ErrorResponse
 // @Router /get_top_category [get]
 func GetTopCategoryForward(c *gin.Context) {
-	url := "http://recommend:8083/get_top_category?" + c.Request.URL.RawQuery
+	url := "http://recommend:8083/top?" + c.Request.URL.RawQuery
 
 	resp, err := http.Get(url)
 	if err != nil {
