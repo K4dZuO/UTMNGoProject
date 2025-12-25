@@ -1,0 +1,10 @@
+postgres:
+  dsn: "postgres://root:root@postgres:5432/marketdb?sslmode=disable"
+
+kafka:
+  brokers:
+    - "kafka:9092"
+  topic: "recalculation-requests"
+
+http:
+  addr: ":8081"

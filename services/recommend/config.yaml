@@ -1,0 +1,8 @@
+http:
+  addr: ":8083"
+
+redis:
+  addr: "redis:6379"
+
+rating:
+  base_url: "http://rating:8082"
