@@ -110,6 +110,23 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+    
+  akhq:
+    image: tchiotludo/akhq:latest
+    container_name: akhq-go
+    depends_on:
+      - kafka
+    ports:
+      - "8555:8080"
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            kafka-docker:
+              properties:
+                bootstrap.servers: "kafka:9092"
+
   
 volumes:
   postgres_data:
