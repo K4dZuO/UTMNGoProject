@@ -1,24 +1,20 @@
-FROM golang:1.25-alpine AS builder
+FROM golang:1.25-alpine AS build
 
 WORKDIR /app
-
-# Install git (required for go get)
-RUN apk add --no-cache git
 
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-
-RUN CGO_ENABLED=0 GOOS=linux go build -o rating_service cmd/rating/main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o rating ./cmd/app
 
 FROM alpine:3.20
 
-WORKDIR /root/
+WORKDIR /app
 
-COPY --from=builder /app/rating_service .
-COPY cmd/rating/rate_config.yaml ./rate_config.yaml
+COPY --from=build /app/rating /app/rating
+COPY config.yaml /app/config.yaml
 
 EXPOSE 8082
 
-CMD ["./rating_service"]
+CMD ["./rating"]

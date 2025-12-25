@@ -3,6 +3,7 @@ version: "3.9"
 services:
   postgres:
     image: postgres:16-alpine
+    container_name: postgres-go
     environment:
       POSTGRES_DB: marketdb
       POSTGRES_USER: root
@@ -11,107 +12,93 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U root -d marketdb"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    restart: unless-stopped
-
-  reviews:
-    build:
-      context: .
-      dockerfile: cmd/reviews/Dockerfile
-    environment:
-      DATABASE_DSN: postgres://root:root@postgres:5432/marketdb
-    depends_on:
-      postgres:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-
-    ports:
-      - "8081:8081"
-    restart: unless-stopped
-
-  rating:
-    build:
-      context: .
-      dockerfile: cmd/rating/Dockerfile
-    environment:
-      DATABASE_DSN: postgres://root:root@postgres:5432/marketdb
-      REDIS_ADDR: redis:6379
-    depends_on:
-      - postgres
-      - redis
-    ports:
-      - "8082:8082"
-    restart: unless-stopped
-
-  recommend:
-    build:
-      context: .
-      dockerfile: cmd/recommend/Dockerfile
-    environment:
-      REDIS_ADDR: redis:6379
-      RATING_SERVICE_URL: http://rating:8082
-    depends_on:
-      - redis
-      - rating
-      - kafka
-    ports:
-      - "8083:8083"
-    restart: unless-stopped
-
-  gateway:
-    build:
-      context: .
-      dockerfile: cmd/gateway/Dockerfile
-    ports:
-      - "8080:8080"
-    depends_on:
-      - reviews
-      - rating
-      - recommend
-    restart: unless-stopped
-
   kafka:
     image: apache/kafka:latest
-    container_name: go_kafka
+    container_name: kafka-go
     ports:
       - "9092:9092"
-      - "9093:9093"
     environment:
-      # === Основное ===
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@go_kafka:9093
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-
-      # === Cluster ID — UUID без "-" ===
       KAFKA_CLUSTER_ID: 4YjUOeEaQzq1r5t6v7w8x9
-      
-      # === Простые настройки ===
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
     volumes:
       - kafka_data:/var/lib/kafka
-    healthcheck:
-      test: ["CMD", "/opt/kafka/bin/kafka-topics.sh", "--bootstrap-server", "localhost:9092", "--list"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
-    
+  redis:
+    image: redis:7-alpine
+    container_name: redis-rating
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+
+  migrate:
+    image: migrate/migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./migrations:/migrations
+    command:
+      [
+        "-path", "/migrations",
+        "-database",
+        "postgres://root:root@postgres:5432/marketdb?sslmode=disable",
+        "up"
+      ]
+
+  seed:
+    build:
+      context: ./services/reviews
+      dockerfile: tools/seed/Dockerfile
+    environment:
+      DATABASE_DSN: postgres://root:root@postgres:5432/marketdb?sslmode=disable
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  reviews:
+    build:
+      context: ./services/reviews
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      seed:
+        condition: service_completed_successfully
+    ports:
+      - "8081:8081"
+
+  rating:
+    build:
+      context: ./services/rating
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      redis:
+        condition: service_started
+      seed:
+        condition: service_completed_successfully
+    ports:
+      - "8082:8082"
+
+      
   akhq:
     image: tchiotludo/akhq:latest
     container_name: akhq-go
@@ -127,7 +114,6 @@ services:
               properties:
                 bootstrap.servers: "kafka:9092"
 
-  
 volumes:
   postgres_data:
   kafka_data:
