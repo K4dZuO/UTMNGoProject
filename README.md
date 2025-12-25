@@ -10,7 +10,7 @@ docker compose up
 python ./script_reviews.py
 ```
 
-3. Покрытие reviewService тестами:
+3. Покрытие reviewService тестами через testify:
 ```
 cd services/reviews
 go test ./internal/services/reviewService -cover
@@ -18,5 +18,5 @@ go test ./internal/services/reviewService -cover
 
 Ожидается:
 ```
-ok      reviews_service/internal/services/reviewService 0.007s  coverage: 100.0% of statements
+ok      reviews_service/internal/services/reviewService 0.012s  coverage: 100.0% of statements
 ```

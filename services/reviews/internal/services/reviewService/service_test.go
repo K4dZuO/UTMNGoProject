@@ -3,11 +3,13 @@ package reviewService
 import (
 	"context"
 	"errors"
-	"math/rand"
 	"testing"
 	"time"
 
 	"reviews_service/internal/models"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
 type mockStorage struct {
@@ -26,164 +28,127 @@ func (m *mockProducer) SendReviewCreated(ctx context.Context, productID int) err
 	return m.sendFn(ctx, productID)
 }
 
-func TestService_CreateReview(t *testing.T) {
-	rand.Seed(42)
+type ReviewServiceSuite struct {
+	suite.Suite
 
-	type args struct {
-		productID int
-		rate      int
-	}
+	ctx      context.Context
+	cancel   context.CancelFunc
+	storage  *mockStorage
+	producer *mockProducer
+	service  *Service
+}
 
-	tests := []struct {
-		name      string
-		args      args
-		storage   *mockStorage
-		producer  *mockProducer
-		wantErr   bool
-		wantID    bool
-	}{
-		{
-			name: "success",
-			args: args{
-				productID: 10,
-				rate:      5,
-			},
-			storage: &mockStorage{
-				saveFn: func(ctx context.Context, review models.ReviewInfo) error {
-					if review.ProductID != 10 || review.Rate != 5 {
-						return errors.New("invalid review data")
-					}
-					return nil
-				},
-			},
-			producer: &mockProducer{
-				sendFn: func(ctx context.Context, productID int) error {
-					if productID != 10 {
-						return errors.New("invalid product id")
-					}
-					return nil
-				},
-			},
-			wantErr: false,
-			wantID:  true,
-		},
-		{
-			name: "invalid rate low",
-			args: args{
-				productID: 1,
-				rate:      0,
-			},
-			storage:  nil,
-			producer: nil,
-			wantErr:  true,
-			wantID:   false,
-		},
-		{
-			name: "invalid rate high",
-			args: args{
-				productID: 1,
-				rate:      6,
-			},
-			storage:  nil,
-			producer: nil,
-			wantErr:  true,
-			wantID:   false,
-		},
-		{
-			name: "invalid product id low",
-			args: args{
-				productID: 0,
-				rate:      3,
-			},
-			storage:  nil,
-			producer: nil,
-			wantErr:  true,
-			wantID:   false,
-		},
-		{
-			name: "invalid product id high",
-			args: args{
-				productID: 100_001,
-				rate:      3,
-			},
-			storage:  nil,
-			producer: nil,
-			wantErr:  true,
-			wantID:   false,
-		},
-		{
-			name: "storage error",
-			args: args{
-				productID: 5,
-				rate:      4,
-			},
-			storage: &mockStorage{
-				saveFn: func(ctx context.Context, review models.ReviewInfo) error {
-					return errors.New("storage failed")
-				},
-			},
-			producer: &mockProducer{
-				sendFn: func(ctx context.Context, productID int) error {
-					return nil
-				},
-			},
-			wantErr: true,
-			wantID:  false,
-		},
-		{
-			name: "producer error",
-			args: args{
-				productID: 7,
-				rate:      2,
-			},
-			storage: &mockStorage{
-				saveFn: func(ctx context.Context, review models.ReviewInfo) error {
-					return nil
-				},
-			},
-			producer: &mockProducer{
-				sendFn: func(ctx context.Context, productID int) error {
-					return errors.New("kafka failed")
-				},
-			},
-			wantErr: true,
-			wantID:  false,
+func (s *ReviewServiceSuite) SetupTest() {
+	s.ctx, s.cancel = context.WithTimeout(context.Background(), time.Second)
+}
+
+func (s *ReviewServiceSuite) TearDownTest() {
+	s.cancel()
+}
+
+func (s *ReviewServiceSuite) TestCreateReview_Success() {
+	s.storage = &mockStorage{
+		saveFn: func(ctx context.Context, review models.ReviewInfo) error {
+			assert.Equal(s.T(), 10, review.ProductID)
+			assert.Equal(s.T(), 5, review.Rate)
+			assert.NotZero(s.T(), review.ID)
+			return nil
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			defer cancel()
-
-			var storage Storage
-			var producer Producer
-
-			if tt.storage != nil {
-				storage = tt.storage
-			}
-			if tt.producer != nil {
-				producer = tt.producer
-			}
-
-			svc := New(storage, producer)
-
-			id, err := svc.CreateReview(ctx, tt.args.productID, tt.args.rate)
-
-			if tt.wantErr {
-				if err == nil {
-					t.Fatalf("expected error, got nil")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			if tt.wantID && id == "" {
-				t.Fatalf("expected id, got empty string")
-			}
-		})
+	s.producer = &mockProducer{
+		sendFn: func(ctx context.Context, productID int) error {
+			assert.Equal(s.T(), 10, productID)
+			return nil
+		},
 	}
+
+	s.service = New(s.storage, s.producer)
+
+	id, err := s.service.CreateReview(s.ctx, 10, 5)
+
+	assert.NoError(s.T(), err)
+	assert.NotEmpty(s.T(), id)
+}
+
+func (s *ReviewServiceSuite) TestCreateReview_InvalidRateLow() {
+	s.service = New(nil, nil)
+
+	id, err := s.service.CreateReview(s.ctx, 1, 0)
+
+	assert.Error(s.T(), err)
+	assert.Empty(s.T(), id)
+}
+
+func (s *ReviewServiceSuite) TestCreateReview_InvalidRateHigh() {
+	s.service = New(nil, nil)
+
+	id, err := s.service.CreateReview(s.ctx, 1, 6)
+
+	assert.Error(s.T(), err)
+	assert.Empty(s.T(), id)
+}
+
+func (s *ReviewServiceSuite) TestCreateReview_InvalidProductIDLow() {
+	s.service = New(nil, nil)
+
+	id, err := s.service.CreateReview(s.ctx, 0, 3)
+
+	assert.Error(s.T(), err)
+	assert.Empty(s.T(), id)
+}
+
+func (s *ReviewServiceSuite) TestCreateReview_InvalidProductIDHigh() {
+	s.service = New(nil, nil)
+
+	id, err := s.service.CreateReview(s.ctx, 100_001, 3)
+
+	assert.Error(s.T(), err)
+	assert.Empty(s.T(), id)
+}
+
+func (s *ReviewServiceSuite) TestCreateReview_StorageError() {
+	s.storage = &mockStorage{
+		saveFn: func(ctx context.Context, review models.ReviewInfo) error {
+			return errors.New("storage error")
+		},
+	}
+
+	s.producer = &mockProducer{
+		sendFn: func(ctx context.Context, productID int) error {
+			return nil
+		},
+	}
+
+	s.service = New(s.storage, s.producer)
+
+	id, err := s.service.CreateReview(s.ctx, 5, 4)
+
+	assert.Error(s.T(), err)
+	assert.Empty(s.T(), id)
+}
+
+func (s *ReviewServiceSuite) TestCreateReview_ProducerError() {
+	s.storage = &mockStorage{
+		saveFn: func(ctx context.Context, review models.ReviewInfo) error {
+			return nil
+		},
+	}
+
+	s.producer = &mockProducer{
+		sendFn: func(ctx context.Context, productID int) error {
+			return errors.New("producer error")
+		},
+	}
+
+	s.service = New(s.storage, s.producer)
+
+	id, err := s.service.CreateReview(s.ctx, 7, 2)
+
+	assert.Error(s.T(), err)
+	assert.Empty(s.T(), id)
+}
+
+func TestReviewServiceSuite(t *testing.T) {
+	suite.Run(t, new(ReviewServiceSuite))
 }
