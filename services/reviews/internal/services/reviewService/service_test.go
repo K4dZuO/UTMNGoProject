@@ -47,10 +47,13 @@ func (s *ReviewServiceSuite) TearDownTest() {
 }
 
 func (s *ReviewServiceSuite) TestCreateReview_Success() {
+	wantProductID := 10
+	wantRate := 5
+
 	s.storage = &mockStorage{
 		saveFn: func(ctx context.Context, review models.ReviewInfo) error {
-			assert.Equal(s.T(), 10, review.ProductID)
-			assert.Equal(s.T(), 5, review.Rate)
+			assert.Equal(s.T(), wantProductID, review.ProductID)
+			assert.Equal(s.T(), wantRate, review.Rate)
 			assert.NotZero(s.T(), review.ID)
 			return nil
 		},
@@ -58,56 +61,71 @@ func (s *ReviewServiceSuite) TestCreateReview_Success() {
 
 	s.producer = &mockProducer{
 		sendFn: func(ctx context.Context, productID int) error {
-			assert.Equal(s.T(), 10, productID)
+			assert.Equal(s.T(), wantProductID, productID)
 			return nil
 		},
 	}
 
 	s.service = New(s.storage, s.producer)
 
-	id, err := s.service.CreateReview(s.ctx, 10, 5)
+	id, err := s.service.CreateReview(s.ctx, wantProductID, wantRate)
 
 	assert.NoError(s.T(), err)
 	assert.NotEmpty(s.T(), id)
 }
 
 func (s *ReviewServiceSuite) TestCreateReview_InvalidRateLow() {
+	wantErr := true
+	wantID := ""
+
 	s.service = New(nil, nil)
 
 	id, err := s.service.CreateReview(s.ctx, 1, 0)
 
-	assert.Error(s.T(), err)
-	assert.Empty(s.T(), id)
+	assert.Equal(s.T(), wantErr, err != nil)
+	assert.Equal(s.T(), wantID, id)
 }
 
 func (s *ReviewServiceSuite) TestCreateReview_InvalidRateHigh() {
+	wantErr := true
+	wantID := ""
+
 	s.service = New(nil, nil)
 
 	id, err := s.service.CreateReview(s.ctx, 1, 6)
 
-	assert.Error(s.T(), err)
-	assert.Empty(s.T(), id)
+	assert.Equal(s.T(), wantErr, err != nil)
+	assert.Equal(s.T(), wantID, id)
 }
 
 func (s *ReviewServiceSuite) TestCreateReview_InvalidProductIDLow() {
+	wantErr := true
+	wantID := ""
+
 	s.service = New(nil, nil)
 
 	id, err := s.service.CreateReview(s.ctx, 0, 3)
 
-	assert.Error(s.T(), err)
-	assert.Empty(s.T(), id)
+	assert.Equal(s.T(), wantErr, err != nil)
+	assert.Equal(s.T(), wantID, id)
 }
 
 func (s *ReviewServiceSuite) TestCreateReview_InvalidProductIDHigh() {
+	wantErr := true
+	wantID := ""
+
 	s.service = New(nil, nil)
 
 	id, err := s.service.CreateReview(s.ctx, 100_001, 3)
 
-	assert.Error(s.T(), err)
-	assert.Empty(s.T(), id)
+	assert.Equal(s.T(), wantErr, err != nil)
+	assert.Equal(s.T(), wantID, id)
 }
 
 func (s *ReviewServiceSuite) TestCreateReview_StorageError() {
+	wantErr := true
+	wantID := ""
+
 	s.storage = &mockStorage{
 		saveFn: func(ctx context.Context, review models.ReviewInfo) error {
 			return errors.New("storage error")
@@ -124,11 +142,14 @@ func (s *ReviewServiceSuite) TestCreateReview_StorageError() {
 
 	id, err := s.service.CreateReview(s.ctx, 5, 4)
 
-	assert.Error(s.T(), err)
-	assert.Empty(s.T(), id)
+	assert.Equal(s.T(), wantErr, err != nil)
+	assert.Equal(s.T(), wantID, id)
 }
 
 func (s *ReviewServiceSuite) TestCreateReview_ProducerError() {
+	wantErr := true
+	wantID := ""
+
 	s.storage = &mockStorage{
 		saveFn: func(ctx context.Context, review models.ReviewInfo) error {
 			return nil
@@ -145,8 +166,8 @@ func (s *ReviewServiceSuite) TestCreateReview_ProducerError() {
 
 	id, err := s.service.CreateReview(s.ctx, 7, 2)
 
-	assert.Error(s.T(), err)
-	assert.Empty(s.T(), id)
+	assert.Equal(s.T(), wantErr, err != nil)
+	assert.Equal(s.T(), wantID, id)
 }
 
 func TestReviewServiceSuite(t *testing.T) {
